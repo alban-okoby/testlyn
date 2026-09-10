@@ -1,0 +1,69 @@
+# Testlyn Example Tests
+# This is a sample test file showing how to use Testlyn
+
+suite: JSONPlaceholder API Tests
+description: Testing the public JSONPlaceholder API
+
+# Optional: set a base URL to use in all tests
+baseUrl: https://jsonplaceholder.typicode.com
+
+tests:
+  # Test 1: Simple GET request
+  - name: Get User 1
+    url: /users/1
+    method: GET
+    expect:
+      status: 200
+      body:
+        id: 1
+        name: Leanne Graham
+
+  # Test 2: List Resources
+  - name: List All Posts
+    url: /posts
+    method: GET
+    expect:
+      status: 200
+
+  # Test 3: Create a new post
+  - name: Create New Post
+    url: /posts
+    method: POST
+    headers:
+      Content-Type: application/json
+    body:
+      title: "My Test Post"
+      body: "This is a test post created via Testlyn"
+      userId: 1
+    expect:
+      status: 201
+
+  # Test 4: Update a resource
+  - name: Update Post 1
+    url: /posts/1
+    method: PUT
+    headers:
+      Content-Type: application/json
+    body:
+      title: "Updated Title"
+      body: "Updated body content"
+      userId: 1
+    expect:
+      status: 200
+
+  # Test 5: Delete a resource
+  - name: Delete Post 1
+    url: /posts/1
+    method: DELETE
+    expect:
+      status: 200
+
+  # Test 6: Test custom headers
+  - name: Get with Custom Headers
+    url: /users/2
+    method: GET
+    headers:
+      Accept: application/json
+      User-Agent: Testlyn/0.1.0
+    expect:
+      status: 200
