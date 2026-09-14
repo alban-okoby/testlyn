@@ -3,9 +3,13 @@ import YAML from 'yaml';
 
 export function parseTestFile(filePath) {
   try {
+    if (!filePath.endsWith('.yml') && !filePath.endsWith('.yaml')) {
+      throw new Error('Test file must have .yml or .yaml extension');
+    }
+
     const fileContent = readFileSync(filePath, 'utf-8');
     const parsed = YAML.parse(fileContent);
-    
+
     if (!parsed || !parsed.tests) {
       throw new Error('Invalid test file format. Expected "tests" key at root level.');
     }

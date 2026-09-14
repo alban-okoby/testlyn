@@ -20,7 +20,7 @@ export async function runTests(testFile, options = {}) {
   for (const test of tests.tests) {
     try {
       const result = await executeTest(test, tests.baseUrl);
-      
+
       if (result.passed) {
         passedCount++;
         console.log(chalk.green(`✅ ${test.name}`));
@@ -30,7 +30,7 @@ export async function runTests(testFile, options = {}) {
         console.log(chalk.yellow(`   Expected: ${result.expected}`));
         console.log(chalk.yellow(`   Got: ${result.actual}`));
       }
-      
+
       results.push(result);
 
       if (options.stopOnError && !result.passed) {
@@ -38,9 +38,16 @@ export async function runTests(testFile, options = {}) {
       }
     } catch (error) {
       failedCount++;
+      results.push({
+        name: test.name,
+        passed: false,
+        method: test.method || 'GET',
+        url: test.url,
+        error: error.message,
+      });
       console.log(chalk.red(`❌ ${test.name}`));
       console.log(chalk.red(`   Error: ${error.message}`));
-      
+
       if (options.stopOnError) {
         break;
       }
@@ -66,6 +73,7 @@ async function executeTest(test, baseUrl) {
   }
 
   const fullUrl = baseUrl && url.startsWith('/') ? baseUrl + url : url;
+  const startedAt = Date.now();
 
   try {
     const response = await axios({
@@ -76,6 +84,8 @@ async function executeTest(test, baseUrl) {
       validateStatus: () => true, // Don't throw on any status
     });
 
+    const duration = Date.now() - startedAt;
+
     // Basic assertion - check status code
     if (expect?.status) {
       const passed = response.status === expect.status;
@@ -84,6 +94,9 @@ async function executeTest(test, baseUrl) {
         passed,
         expected: expect.status,
         actual: response.status,
+        method,
+        url: fullUrl,
+        duration,
       };
     }
 
@@ -97,6 +110,9 @@ async function executeTest(test, baseUrl) {
         passed: bodyMatch,
         expected: expect.body,
         actual: response.data,
+        method,
+        url: fullUrl,
+        duration,
       };
     }
 
@@ -104,6 +120,9 @@ async function executeTest(test, baseUrl) {
       name,
       passed: true,
       response: response.data,
+      method,
+      url: fullUrl,
+      duration,
     };
   } catch (error) {
     throw new Error(`Request failed: ${error.message}`);

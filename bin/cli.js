@@ -6,6 +6,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { runTests } from '../src/runner.js';
+import { generateHtmlReport } from '../src/report.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,13 +56,20 @@ program
   .description('Run tests from a YAML file')
   .option('-V, --verbose', 'Verbose output')
   .option('-s, --stop-on-error', 'Stop on first error')
+  .option('--html [path]', 'Generate an HTML report (optional output path)')
   .action(async (file, options) => {
     try {
       const testFile = resolve(process.cwd(), file);
       console.log(chalk.blue(`📋 Loading tests from: ${testFile}`));
-      
-      await runTests(testFile, options);
-      
+
+      const result = await runTests(testFile, options);
+
+      if (options.html) {
+        const outputPath = typeof options.html === 'string' ? options.html : 'testlyn-report.html';
+        const reportPath = generateHtmlReport(result, { testFile: file, outputPath: resolve(process.cwd(), outputPath) });
+        console.log(chalk.cyan(`📄 HTML report written to: ${reportPath}`));
+      }
+
       console.log(chalk.green('\n✅ All tests completed!\n'));
       process.exit(0);
     } catch (error) {

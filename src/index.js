@@ -3,6 +3,7 @@
 
 export { runTests } from './runner.js';
 export { parseTestFile } from './parser.js';
+export { generateHtmlReport, buildHtmlReport } from './report.js';
 
 // Version
 export const version = '0.1.0';

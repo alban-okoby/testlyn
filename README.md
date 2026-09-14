@@ -70,6 +70,7 @@ testlyn run <file.yaml>
 
 - `-v, --verbose` — Show detailed output for each test
 - `-s, --stop-on-error` — Stop running tests on first failure
+- `--html [path]` — Generate an HTML report (optional output path, defaults to `testlyn-report.html`)
 
 ### Examples
 
@@ -79,6 +80,12 @@ testlyn run tests.yaml --verbose
 
 # Stop on first error
 testlyn run tests.yaml --stop-on-error
+
+# Generate an HTML report
+testlyn run tests.yaml --html
+
+# Generate an HTML report with custom filename
+testlyn run tests.yaml --html custom-report.html
 
 # Validate YAML syntax without running
 testlyn validate tests.yaml
@@ -278,7 +285,7 @@ tests:
 - [ ] Test dependencies (run tests in order, share data)
 - [ ] Response assertions (JSON path, regex matching)
 - [ ] Performance testing (response time assertions)
-- [ ] HTML report generation
+- [x] HTML report generation
 - [ ] Multi-format support (OpenAPI, Postman)
 - [ ] Retry logic for flaky tests
 - [ ] Parallel test execution
