@@ -350,15 +350,16 @@ ${pageRows}
       margin: 0.5rem 0;
     }
 
-    .items-per-page {
+    .items-per-page-bottom {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      justify-content: center;
-      margin-bottom: 1rem;
+      justify-content: flex-start;
+      margin-top: 1rem;
+      padding-left: 0;
     }
 
-    .items-per-page select {
+    .items-per-page-bottom select {
       padding: 0.5rem;
       border: 1px solid #ddd;
       border-radius: 4px;
@@ -408,18 +409,6 @@ ${pageRows}
 
     <div class="results-section">
       <h2>Test Results</h2>
-      ${results.length > 0 ? `
-      <div class="items-per-page">
-        <label for="items-select">Items per page:</label>
-        <select id="items-select" onchange="updateItemsPerPage(this.value)">
-          <option value="5">5</option>
-          <option value="10" selected>10</option>
-          <option value="25">25</option>
-          <option value="50">50</option>
-          <option value="${results.length}">All</option>
-        </select>
-      </div>
-      ` : ''}
       <table>
         <thead>
           <tr>
@@ -435,6 +424,18 @@ ${pageRows}
         ${tableBodies}
       </table>
       ${paginationHtml}
+      ${results.length > 0 ? `
+      <div class="items-per-page-bottom">
+        <label for="items-select">Items per page:</label>
+        <select id="items-select" onchange="updateItemsPerPage(this.value)">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="${results.length}">All</option>
+        </select>
+      </div>
+      ` : ''}
     </div>
 
     <div class="footer">
