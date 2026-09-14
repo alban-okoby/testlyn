@@ -142,7 +142,7 @@ ${pageRows}
     }
 
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #667eea;
       color: white;
       padding: 2rem;
       text-align: center;
@@ -579,8 +579,19 @@ ${pageRows}
   return html;
 }
 
+function getDefaultReportFilename() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  return `report-${year}-${month}-${day}-${hours}${minutes}${seconds}.html`;
+}
+
 export function generateHtmlReport(runResult, { testFile, outputPath } = {}) {
-  const resolvedPath = outputPath || resolve(process.cwd(), 'testlyn-report.html');
+  const resolvedPath = outputPath || resolve(process.cwd(), getDefaultReportFilename());
   const html = buildHtmlReport({
     testFile,
     passedCount: runResult.passedCount,

@@ -65,8 +65,8 @@ program
       const result = await runTests(testFile, options);
 
       if (options.html) {
-        const outputPath = typeof options.html === 'string' ? options.html : 'testlyn-report.html';
-        const reportPath = generateHtmlReport(result, { testFile: file, outputPath: resolve(process.cwd(), outputPath) });
+        const outputPath = typeof options.html === 'string' ? resolve(process.cwd(), options.html) : undefined;
+        const reportPath = generateHtmlReport(result, { testFile: file, outputPath });
         console.log(chalk.cyan(`📄 HTML report written to: ${reportPath}`));
       }
 

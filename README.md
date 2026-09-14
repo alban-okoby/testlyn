@@ -70,7 +70,7 @@ testlyn run <file.yaml>
 
 - `-v, --verbose` — Show detailed output for each test
 - `-s, --stop-on-error` — Stop running tests on first failure
-- `--html [path]` — Generate an HTML report (optional output path, defaults to `testlyn-report.html`)
+- `--html [path]` — Generate an HTML report (optional output path, defaults to `report-yyyy-mm-dd-hhmmss.html`)
 
 ### Examples
 
@@ -81,11 +81,11 @@ testlyn run tests.yaml --verbose
 # Stop on first error
 testlyn run tests.yaml --stop-on-error
 
-# Generate an HTML report
+# Generate an HTML report (auto-named with date/time)
 testlyn run tests.yaml --html
 
 # Generate an HTML report with custom filename
-testlyn run tests.yaml --html custom-report.html
+testlyn run tests.yaml --html my-api-tests.html
 
 # Validate YAML syntax without running
 testlyn validate tests.yaml

@@ -71,23 +71,29 @@ test('report - buildHtmlReport handles error entries', () => {
 });
 
 test('report - generateHtmlReport writes file to default path', () => {
-  const reportPath = join(process.cwd(), 'testlyn-report.html');
-
   try {
-    const html = generateHtmlReport(
+    const reportPath = generateHtmlReport(
       { passedCount: 1, failedCount: 0, results: [{ name: 'Test', passed: true, method: 'GET', url: 'https://api.example.com', duration: 50 }] },
       { testFile: 'test.yaml' }
     );
 
-    assert.strictEqual(html, reportPath);
-    assert.ok(readFileSync(reportPath, 'utf-8').includes('Test'));
+    assert.ok(reportPath.includes('report-'));
+    assert.ok(reportPath.endsWith('.html'));
+    const content = readFileSync(reportPath, 'utf-8');
+    assert.ok(content.includes('Test'));
+    assert.ok(content.includes('test.yaml'));
   } finally {
-    if (reportPath) {
-      try {
-        unlinkSync(reportPath);
-      } catch (e) {
-        // ignore
-      }
+    try {
+      const files = require('fs').readdirSync(process.cwd()).filter(f => f.startsWith('report-') && f.endsWith('.html'));
+      files.forEach(f => {
+        try {
+          unlinkSync(join(process.cwd(), f));
+        } catch (e) {
+          // ignore
+        }
+      });
+    } catch (e) {
+      // ignore
     }
   }
 });
