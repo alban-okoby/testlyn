@@ -17,18 +17,27 @@ export function buildHtmlReport({ testFile, passedCount, failedCount, results, g
   const passRate = totalTests > 0 ? Math.round((passedCount / totalTests) * 100) : 0;
   const timestamp = generatedAt.toLocaleString();
 
-  const resultRows = results
-    .map((result) => {
-      const status = result.passed ? '✅ Pass' : '❌ Fail';
-      const statusClass = result.passed ? 'pass' : 'fail';
-      const name = escapeHtml(result.name);
-      const method = escapeHtml(result.method || '—');
-      const url = escapeHtml(result.url || '—');
-      const duration = result.duration ? `${result.duration}ms` : '—';
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(results.length / itemsPerPage);
 
-      if (result.error) {
-        const error = escapeHtml(result.error);
-        return `
+  const resultPages = [];
+  for (let page = 0; page < totalPages; page++) {
+    const startIdx = page * itemsPerPage;
+    const endIdx = Math.min(startIdx + itemsPerPage, results.length);
+    const pageResults = results.slice(startIdx, endIdx);
+
+    const pageRows = pageResults
+      .map((result) => {
+        const status = result.passed ? '✅ Pass' : '❌ Fail';
+        const statusClass = result.passed ? 'pass' : 'fail';
+        const name = escapeHtml(result.name);
+        const method = escapeHtml(result.method || '—');
+        const url = escapeHtml(result.url || '—');
+        const duration = result.duration ? `${result.duration}ms` : '—';
+
+        if (result.error) {
+          const error = escapeHtml(result.error);
+          return `
       <tr class="result-row ${statusClass}">
         <td class="status">${status}</td>
         <td class="name">${name}</td>
@@ -38,12 +47,12 @@ export function buildHtmlReport({ testFile, passedCount, failedCount, results, g
         <td class="actual error">${error}</td>
         <td class="duration">${duration}</td>
       </tr>`;
-      }
+        }
 
-      const expected = result.expected !== undefined ? escapeHtml(JSON.stringify(result.expected)) : '—';
-      const actual = result.actual !== undefined ? escapeHtml(JSON.stringify(result.actual)) : '—';
+        const expected = result.expected !== undefined ? escapeHtml(JSON.stringify(result.expected)) : '—';
+        const actual = result.actual !== undefined ? escapeHtml(JSON.stringify(result.actual)) : '—';
 
-      return `
+        return `
       <tr class="result-row ${statusClass}">
         <td class="status">${status}</td>
         <td class="name">${name}</td>
@@ -53,8 +62,55 @@ export function buildHtmlReport({ testFile, passedCount, failedCount, results, g
         <td class="actual">${actual}</td>
         <td class="duration">${duration}</td>
       </tr>`;
+      })
+      .join('\n');
+
+    resultPages.push(pageRows);
+  }
+
+  // Generate table bodies for each page (hidden by default, except first)
+  const tableBodies = resultPages
+    .map((pageRows, idx) => {
+      const hidden = idx > 0 ? 'style="display:none;"' : '';
+      return `<tbody class="page-body" ${hidden} data-page="${idx}">
+${pageRows}
+      </tbody>`;
     })
     .join('\n');
+
+  // Generate pagination controls
+  const pageButtons = Array.from({ length: totalPages }, (_, idx) => {
+    const isActive = idx === 0 ? 'active' : '';
+    return `<button class="page-btn ${isActive}" data-page="${idx}">${idx + 1}</button>`;
+  }).join('\n      ');
+
+  const paginationHtml =
+    totalPages > 1
+      ? `
+    <div class="pagination-controls">
+      <button id="prev-btn" ${totalPages <= 1 ? 'disabled' : ''}>← Previous</button>
+      <div class="page-buttons">
+        ${pageButtons}
+      </div>
+      <button id="next-btn" ${totalPages <= 1 ? 'disabled' : ''}>Next →</button>
+    </div>
+    <div class="pagination-info">
+      Page <span id="current-page">1</span> of <span id="total-pages">${totalPages}</span> |
+      Showing <span id="showing-start">1</span>-<span id="showing-end">${Math.min(itemsPerPage, results.length)}</span> of ${results.length} results
+    </div>`
+      : '';
+
+  // Prepare data for JavaScript with HTML escaping done on server side
+  const escapedResults = results.map(r => ({
+    name: escapeHtml(r.name),
+    passed: r.passed,
+    method: escapeHtml(r.method || 'GET'),
+    url: escapeHtml(r.url || '—'),
+    expected: escapeHtml(r.expected !== undefined ? JSON.stringify(r.expected) : '—'),
+    actual: escapeHtml(r.actual !== undefined ? JSON.stringify(r.actual) : (r.error || '—')),
+    duration: escapeHtml(r.duration ? `${r.duration}ms` : '—'),
+    error: escapeHtml(r.error || null),
+  }));
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -226,6 +282,91 @@ export function buildHtmlReport({ testFile, passedCount, failedCount, results, g
       font-size: 0.85rem;
     }
 
+    .pagination-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin: 2rem 0 1rem;
+      flex-wrap: wrap;
+    }
+
+    .page-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .page-btn {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .page-btn:hover {
+      background: #f0f0f0;
+      border-color: #667eea;
+    }
+
+    .page-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .page-btn:disabled,
+    #prev-btn:disabled,
+    #next-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #prev-btn,
+    #next-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    #prev-btn:hover:not(:disabled),
+    #next-btn:hover:not(:disabled) {
+      background: #f0f0f0;
+      border-color: #667eea;
+    }
+
+    .pagination-info {
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+      margin: 0.5rem 0;
+    }
+
+    .items-per-page {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .items-per-page select {
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      background: white;
+      cursor: pointer;
+    }
+
     .footer {
       background: #f8f9fa;
       padding: 1rem 2rem;
@@ -267,6 +408,18 @@ export function buildHtmlReport({ testFile, passedCount, failedCount, results, g
 
     <div class="results-section">
       <h2>Test Results</h2>
+      ${results.length > 0 ? `
+      <div class="items-per-page">
+        <label for="items-select">Items per page:</label>
+        <select id="items-select" onchange="updateItemsPerPage(this.value)">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="${results.length}">All</option>
+        </select>
+      </div>
+      ` : ''}
       <table>
         <thead>
           <tr>
@@ -279,16 +432,146 @@ export function buildHtmlReport({ testFile, passedCount, failedCount, results, g
             <th>Duration</th>
           </tr>
         </thead>
-        <tbody>
-${resultRows}
-        </tbody>
+        ${tableBodies}
       </table>
+      ${paginationHtml}
     </div>
 
     <div class="footer">
       <p>Generated by Testlyn v0.1.0</p>
     </div>
   </div>
+
+  <script>
+    function escapeHtml(str) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(str).replace(/[&<>"']/g, m => map[m]);
+    }
+    let currentItemsPerPage = 10;
+    let allResults = ${JSON.stringify(escapedResults)};
+
+    function updateItemsPerPage(value) {
+      currentItemsPerPage = parseInt(value);
+      renderTable();
+    }
+
+    function escapeHtmlDisplay(str) {
+      return str;
+    }
+
+    function renderTable() {
+      const totalPages = Math.ceil(allResults.length / currentItemsPerPage);
+      const pageBodies = document.querySelectorAll('.page-body');
+      pageBodies.forEach(body => body.remove());
+      const tbody = document.querySelector('thead').parentElement;
+      for (let page = 0; page < totalPages; page++) {
+        const startIdx = page * currentItemsPerPage;
+        const endIdx = Math.min(startIdx + currentItemsPerPage, allResults.length);
+        const pageResults = allResults.slice(startIdx, endIdx);
+        const pageBody = document.createElement('tbody');
+        pageBody.className = 'page-body';
+        pageBody.dataset.page = page;
+        if (page > 0) pageBody.style.display = 'none';
+        pageResults.forEach(result => {
+          const tr = document.createElement('tr');
+          tr.className = \`result-row \${result.passed ? 'pass' : 'fail'}\`;
+          const status = result.passed ? '✅ Pass' : '❌ Fail';
+          const actualCell = result.error !== 'null' && result.error !== null ? \`<td class="actual error">\${result.error}</td>\` : \`<td class="actual">\${result.actual}</td>\`;
+          tr.innerHTML = \`
+            <td class="status">\${status}</td>
+            <td class="name">\${result.name}</td>
+            <td class="method">\${result.method}</td>
+            <td class="url">\${result.url}</td>
+            <td class="expected">\${result.expected}</td>
+            \${actualCell}
+            <td class="duration">\${result.duration}</td>
+          \`;
+          pageBody.appendChild(tr);
+        });
+        tbody.appendChild(pageBody);
+      }
+      updatePaginationControls(totalPages);
+    }
+
+    function updatePaginationControls(totalPages) {
+      if (totalPages <= 1) return;
+      const paginationControls = document.querySelector('.pagination-controls');
+      const paginationInfo = document.querySelector('.pagination-info');
+      if (paginationControls) {
+        document.querySelectorAll('.page-btn').forEach(btn => btn.remove());
+        const pageButtonsDiv = paginationControls.querySelector('.page-buttons');
+        for (let i = 0; i < totalPages; i++) {
+          const btn = document.createElement('button');
+          btn.className = 'page-btn' + (i === 0 ? ' active' : '');
+          btn.dataset.page = i;
+          btn.textContent = i + 1;
+          btn.onclick = () => goToPage(i);
+          pageButtonsDiv.appendChild(btn);
+        }
+      }
+      updatePageInfo(0, totalPages);
+    }
+
+    function goToPage(pageNum) {
+      const pageBodies = document.querySelectorAll('.page-body');
+      pageBodies.forEach(body => body.style.display = 'none');
+      const targetPage = document.querySelector(\`[data-page="\${pageNum}"]\`);
+      if (targetPage) targetPage.style.display = '';
+      document.querySelectorAll('.page-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === pageNum);
+      });
+      const totalPages = Math.ceil(allResults.length / currentItemsPerPage);
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      if (prevBtn) prevBtn.disabled = pageNum === 0;
+      if (nextBtn) nextBtn.disabled = pageNum === totalPages - 1;
+      updatePageInfo(pageNum, totalPages);
+    }
+
+    function updatePageInfo(currentPage, totalPages) {
+      const startIdx = currentPage * currentItemsPerPage;
+      const endIdx = Math.min(startIdx + currentItemsPerPage, allResults.length);
+      const currentPageSpan = document.getElementById('current-page');
+      const totalPagesSpan = document.getElementById('total-pages');
+      const showingStart = document.getElementById('showing-start');
+      const showingEnd = document.getElementById('showing-end');
+      if (currentPageSpan) currentPageSpan.textContent = currentPage + 1;
+      if (totalPagesSpan) totalPagesSpan.textContent = totalPages;
+      if (showingStart) showingStart.textContent = startIdx + 1;
+      if (showingEnd) showingEnd.textContent = endIdx;
+    }
+
+    function setupPaginationButtons() {
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      if (prevBtn) {
+        prevBtn.onclick = () => {
+          const currentBtn = document.querySelector('.page-btn.active');
+          if (currentBtn && currentBtn.previousElementSibling) {
+            const prevPageBtn = currentBtn.previousElementSibling;
+            prevPageBtn.click();
+          }
+        };
+      }
+      if (nextBtn) {
+        nextBtn.onclick = () => {
+          const currentBtn = document.querySelector('.page-btn.active');
+          if (currentBtn && currentBtn.nextElementSibling) {
+            const nextPageBtn = currentBtn.nextElementSibling;
+            nextPageBtn.click();
+          }
+        };
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupPaginationButtons();
+      const totalPages = Math.ceil(allResults.length / currentItemsPerPage);
+      if (totalPages > 1) {
+        goToPage(0);
+      }
+    });
+  </script>
 </body>
 </html>`;
 
