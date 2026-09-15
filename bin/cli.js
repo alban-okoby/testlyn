@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
 import { program } from 'commander';
-import { readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { readFileSync, writeFileSync } from 'fs';
+import { resolve, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
+import YAML from 'yaml';
 import { runTests } from '../src/runner.js';
 import { generateHtmlReport } from '../src/report.js';
+import { convertToTestlyn } from '../src/convert.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -100,6 +102,56 @@ program
       console.log(chalk.green('\n✅ File is valid!\n'));
     } catch (error) {
       console.error(chalk.red(`\n❌ Validation error: ${error.message}\n`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('convert <file>')
+  .description('Convert OpenAPI or Postman to testlyn YAML format')
+  .option('-o, --output <path>', 'Output file path (default: <input-basename>.tests.yaml)')
+  .option('--format <format>', 'Input format (openapi|postman, auto-detected if omitted)')
+  .option('--preview', 'Preview output without writing to disk')
+  .action((file, options) => {
+    try {
+      const inputPath = resolve(process.cwd(), file);
+      console.log(chalk.blue(`📋 Converting: ${inputPath}`));
+
+      const { format, testSuite } = convertToTestlyn(inputPath, {
+        format: options.format,
+      });
+
+      const headerComment = `# Generated from ${format.toUpperCase()} spec
+# Source: ${file}
+# Date: ${new Date().toISOString()}
+#
+# ⚠️  Review the 'expect' blocks below, especially 'status' codes.
+# For OpenAPI: expected status is the first 2xx response found in the spec.
+# For Postman: all tests default to 'expect: status: 200' (no assertions exist in a collection).
+#
+# After review, run: testlyn run ${basename(inputPath, '.yaml')}.tests.yaml\n\n`;
+
+      const yaml = YAML.stringify(testSuite, { indent: 2 });
+      const outputContent = headerComment + yaml;
+
+      if (options.preview) {
+        console.log(chalk.cyan('\n📄 Generated YAML (preview mode - no file written):\n'));
+        console.log(outputContent);
+      } else {
+        const outputPath = options.output
+          ? resolve(process.cwd(), options.output)
+          : resolve(process.cwd(), `${basename(inputPath, basename(inputPath).split('.').pop())}.tests.yaml`);
+
+        writeFileSync(outputPath, outputContent, 'utf-8');
+        console.log(chalk.green(`✅ Converted: ${testSuite.tests.length} test(s)`));
+        console.log(chalk.cyan(`📄 Output: ${outputPath}`));
+        console.log(chalk.yellow('⚠️  Review the expect blocks before running'));
+      }
+
+      console.log('');
+      process.exit(0);
+    } catch (error) {
+      console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
       process.exit(1);
     }
   });
