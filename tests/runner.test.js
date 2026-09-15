@@ -117,3 +117,102 @@ tests:
     unlinkSync(testFile);
   }
 });
+
+test('runner - test dependencies with extract', async () => {
+  const testFile = join(process.cwd(), 'temp-runner-extract.yaml');
+  const yaml = `tests:
+  - name: Login
+    url: https://httpbin.org/anything
+    method: POST
+    body:
+      username: admin
+      password: secret
+    expect:
+      status: 200
+    extract:
+      authToken: body.json.password
+      username: body.json.username
+
+  - name: Get Profile
+    url: https://httpbin.org/anything
+    method: GET
+    headers:
+      Authorization: Bearer \${authToken}
+      X-User: \${username}
+    expect:
+      status: 200`;
+
+  try {
+    writeFileSync(testFile, yaml);
+    const result = await runTests(testFile);
+
+    assert.strictEqual(result.results.length, 2);
+    assert.ok(result.results[0].passed);
+    assert.ok(result.results[1].passed);
+  } finally {
+    unlinkSync(testFile);
+  }
+});
+
+test('runner - test dependencies with direct step reference', async () => {
+  const testFile = join(process.cwd(), 'temp-runner-step-ref.yaml');
+  const yaml = `tests:
+  - name: CreateUser
+    url: https://httpbin.org/anything
+    method: POST
+    body:
+      name: Alice
+      email: alice@example.com
+    expect:
+      status: 200
+
+  - name: GetUser
+    url: https://httpbin.org/anything
+    method: GET
+    headers:
+      X-User-Name: \${CreateUser.body.json.name}
+      X-User-Email: \${CreateUser.body.json.email}
+    expect:
+      status: 200`;
+
+  try {
+    writeFileSync(testFile, yaml);
+    const result = await runTests(testFile);
+
+    assert.strictEqual(result.results.length, 2);
+    assert.ok(result.results[0].passed);
+    assert.ok(result.results[1].passed);
+  } finally {
+    unlinkSync(testFile);
+  }
+});
+
+test('runner - missing variable fails test immediately', async () => {
+  const testFile = join(process.cwd(), 'temp-runner-missing-var.yaml');
+  const yaml = `tests:
+  - name: First Test
+    url: https://httpbin.org/status/200
+    method: GET
+    expect:
+      status: 200
+
+  - name: Second Test
+    url: https://httpbin.org/anything
+    method: GET
+    headers:
+      Authorization: Bearer \${UNDEFINED_TOKEN}
+    expect:
+      status: 200`;
+
+  try {
+    writeFileSync(testFile, yaml);
+    const result = await runTests(testFile);
+
+    assert.strictEqual(result.results.length, 2);
+    assert.ok(result.results[0].passed);
+    assert.ok(!result.results[1].passed);
+    assert.ok(result.results[1].error.includes('missing variable'));
+  } finally {
+    unlinkSync(testFile);
+  }
+});

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import chalk from 'chalk';
+import { resolveStepReferences, extractVariables } from './context.js';
 
 export async function runTests(testFile, options = {}) {
   const { parseTestFile } = await import('./parser.js');
@@ -12,12 +13,14 @@ export async function runTests(testFile, options = {}) {
   let passedCount = 0;
   let failedCount = 0;
   const results = [];
+  const context = { vars: {}, steps: {} };
 
   console.log(chalk.blue(`\n🧪 Running ${tests.tests.length} test(s)...\n`));
 
   for (const test of tests.tests) {
     try {
-      const result = await executeTest(test, tests.baseUrl);
+      const resolvedTest = resolveStepReferences(test, context);
+      const result = await executeTest(resolvedTest, tests.baseUrl);
 
       if (result.passed) {
         passedCount++;
@@ -30,6 +33,29 @@ export async function runTests(testFile, options = {}) {
       }
 
       results.push(result);
+
+      if (result.rawResponse) {
+        context.steps[test.name] = result.rawResponse;
+
+        if (test.extract) {
+          try {
+            const extracted = extractVariables(test.extract, result.rawResponse);
+            Object.assign(context.vars, extracted);
+          } catch (error) {
+            failedCount++;
+            results[results.length - 1] = {
+              ...result,
+              passed: false,
+              error: error.message,
+            };
+            console.log(chalk.red(`   Extraction error: ${error.message}`));
+
+            if (options.stopOnError) {
+              break;
+            }
+          }
+        }
+      }
 
       if (options.stopOnError && !result.passed) {
         break;
@@ -83,6 +109,7 @@ async function executeTest(test, baseUrl) {
     });
 
     const duration = Date.now() - startedAt;
+    const rawResponse = { status: response.status, headers: response.headers, body: response.data };
 
     // Basic assertion - check status code
     if (expect?.status) {
@@ -95,6 +122,7 @@ async function executeTest(test, baseUrl) {
         method,
         url: fullUrl,
         duration,
+        rawResponse,
       };
     }
 
@@ -111,6 +139,7 @@ async function executeTest(test, baseUrl) {
         method,
         url: fullUrl,
         duration,
+        rawResponse,
       };
     }
 
@@ -121,6 +150,7 @@ async function executeTest(test, baseUrl) {
       method,
       url: fullUrl,
       duration,
+      rawResponse,
     };
   } catch (error) {
     throw new Error(`Request failed: ${error.message}`);

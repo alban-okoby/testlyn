@@ -185,6 +185,72 @@ expect:
     key: value
 ```
 
+## Test Dependencies & Data Sharing
+
+Tests execute sequentially in the order they appear in your YAML file. You can extract data from one test's response and reuse it in later tests using two complementary mechanisms:
+
+### 1. Explicit Named Extraction with `extract:`
+
+Use the `extract:` block to name and save values from a test's response. Later tests can reference these values using `${variableName}`:
+
+```yaml
+tests:
+  - name: Login
+    url: https://api.example.com/auth
+    method: POST
+    body:
+      username: admin
+      password: secret
+    expect:
+      status: 200
+    extract:
+      authToken: body.token
+      userId: body.user.id
+
+  - name: Get Profile
+    url: https://api.example.com/profile
+    method: GET
+    headers:
+      Authorization: Bearer ${authToken}
+    expect:
+      status: 200
+
+  - name: Delete User
+    url: https://api.example.com/users/${userId}
+    method: DELETE
+    expect:
+      status: 204
+```
+
+### 2. Direct Step Reference (No Extract Required)
+
+Access any prior test's full response directly using `${TestName.path.to.value}`:
+
+```yaml
+tests:
+  - name: CreateResource
+    url: https://api.example.com/resources
+    method: POST
+    body:
+      name: "My Resource"
+    expect:
+      status: 201
+
+  - name: UseResource
+    url: https://api.example.com/resources/${CreateResource.body.id}/data
+    method: POST
+    body:
+      resource_id: ${CreateResource.body.id}
+      name: ${CreateResource.body.name}
+    expect:
+      status: 200
+```
+
+**Notes:**
+- If a test references a variable that doesn't exist (typo, extraction failed, or prior test skipped), that test **fails immediately** with a clear error message before sending any HTTP request.
+- Both `extract:` values and direct step references (`${TestName.path}`) work anywhere: URLs, headers, body fields.
+- Extracted values are merged into a shared pool and persist across all remaining tests.
+
 ## Environment Variables
 
 Use a `.env` file to store sensitive data and configuration:
@@ -342,7 +408,7 @@ tests:
 ## Roadmap
 
 - [x] Environment variables support (`.env` files)
-- [ ] Test dependencies (run tests in order, share data)
+- [x] Test dependencies (run tests in order, share data)
 - [ ] Response assertions (JSON path, regex matching)
 - [ ] Performance testing (response time assertions)
 - [x] HTML report generation
