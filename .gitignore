@@ -21,6 +21,7 @@ yarn.lock
 # Testing
 coverage/
 .nyc_output/
+report-*.html
 
 # Logs
 logs/
