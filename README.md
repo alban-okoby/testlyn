@@ -14,7 +14,11 @@ https://github.com/user-attachments/assets/44ab6796-89b4-4c3d-b1a2-9f94371eac12
 ## Quick Start
 
 ```bash
-npm install -g testlyn
+npm i @alban225/testlyn
+```
+or 
+```bash
+npm i -g @alban225/testlyn
 ```
 
 Create a `tests.yaml` file:
