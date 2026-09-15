@@ -1,11 +1,9 @@
-import { readFileSync } from 'fs';
-import YAML from 'yaml';
 import axios from 'axios';
 import chalk from 'chalk';
 
 export async function runTests(testFile, options = {}) {
-  const fileContent = readFileSync(testFile, 'utf-8');
-  const tests = YAML.parse(fileContent);
+  const { parseTestFile } = await import('./parser.js');
+  const tests = parseTestFile(testFile, options.envFile);
 
   if (!tests || !tests.tests) {
     throw new Error('Invalid test file format. Expected "tests" key.');

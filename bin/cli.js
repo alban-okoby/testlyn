@@ -56,13 +56,15 @@ program
   .description('Run tests from a YAML file')
   .option('-V, --verbose', 'Verbose output')
   .option('-s, --stop-on-error', 'Stop on first error')
+  .option('--env [path]', 'Load environment variables from .env file')
   .option('--html [path]', 'Generate an HTML report (optional output path)')
   .action(async (file, options) => {
     try {
       const testFile = resolve(process.cwd(), file);
       console.log(chalk.blue(`📋 Loading tests from: ${testFile}`));
 
-      const result = await runTests(testFile, options);
+      const envFile = options.env ? resolve(process.cwd(), options.env) : undefined;
+      const result = await runTests(testFile, { ...options, envFile });
 
       if (options.html) {
         const outputPath = typeof options.html === 'string' ? resolve(process.cwd(), options.html) : undefined;

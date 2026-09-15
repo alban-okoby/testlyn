@@ -77,6 +77,7 @@ testlyn run <file.yaml>
 
 - `-v, --verbose` — Show detailed output for each test
 - `-s, --stop-on-error` — Stop running tests on first failure
+- `--env [path]` — Load environment variables from .env file
 - `--html [path]` — Generate an HTML report (optional output path, defaults to `report-yyyy-mm-dd-hhmmss.html`)
 
 ### Examples
@@ -93,6 +94,12 @@ testlyn run tests.yaml --html
 
 # Generate an HTML report with custom filename
 testlyn run tests.yaml --html my-api-tests.html
+
+# Load environment variables from .env file
+testlyn run tests.yaml --env .env
+
+# Combine with HTML report generation
+testlyn run tests.yaml --env .env --html
 
 # Validate YAML syntax without running
 testlyn validate tests.yaml
@@ -174,6 +181,47 @@ expect:
     key: value
 ```
 
+## Environment Variables
+
+Use a `.env` file to store sensitive data and configuration:
+
+```bash
+# .env file
+API_BASE_URL=https://api.example.com
+API_TOKEN=your_secret_token_here
+DB_USER=admin
+```
+
+In your test file, reference variables using `${VARIABLE_NAME}` or `$VARIABLE_NAME` syntax:
+
+```yaml
+tests:
+  - name: Get Users
+    url: ${API_BASE_URL}/users
+    method: GET
+    headers:
+      Authorization: Bearer ${API_TOKEN}
+    expect:
+      status: 200
+
+  - name: Database Query
+    url: ${API_BASE_URL}/db
+    method: POST
+    body:
+      username: $DB_USER
+    expect:
+      status: 200
+```
+
+Run tests with environment variables:
+
+```bash
+testlyn run tests.yaml --env .env
+testlyn run tests.yaml --env ./config/.env.production
+```
+
+**Note:** Add `.env` files to your `.gitignore` to avoid committing secrets.
+
 ## Features
 
 - ✅ **Declarative Tests** — Write tests in simple YAML
@@ -184,6 +232,7 @@ expect:
 - ✅ **Status Code Assertions** — Verify HTTP responses
 - ✅ **Body Assertions** — Check response content
 - ✅ **Custom Headers** — Support for authentication, custom headers
+- ✅ **Environment Variables** — Secure credential management with .env files
 
 ## Use Cases
 
@@ -288,7 +337,7 @@ tests:
 
 ## Roadmap
 
-- [ ] Environment variables support (`.env` files)
+- [x] Environment variables support (`.env` files)
 - [ ] Test dependencies (run tests in order, share data)
 - [ ] Response assertions (JSON path, regex matching)
 - [ ] Performance testing (response time assertions)

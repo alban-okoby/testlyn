@@ -1,7 +1,8 @@
 import { readFileSync } from 'fs';
 import YAML from 'yaml';
+import { loadEnv, processEnvVariables } from './env.js';
 
-export function parseTestFile(filePath) {
+export function parseTestFile(filePath, envPath) {
   try {
     if (!filePath.endsWith('.yml') && !filePath.endsWith('.yaml')) {
       throw new Error('Test file must have .yml or .yaml extension');
@@ -14,8 +15,11 @@ export function parseTestFile(filePath) {
       throw new Error('Invalid test file format. Expected "tests" key at root level.');
     }
 
-    validateTestStructure(parsed);
-    return parsed;
+    const env = envPath ? loadEnv(envPath) : {};
+    const processedParsed = processEnvVariables(parsed, env);
+
+    validateTestStructure(processedParsed);
+    return processedParsed;
   } catch (error) {
     throw new Error(`Failed to parse test file: ${error.message}`);
   }
